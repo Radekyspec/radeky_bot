@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "radeky_bot"
+version = "0.3.0"
+description = "radeky_bot"
+authors = ["Radekyspec <w41k3r15347@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "radeky_bot", from = "./src/plugins/"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.7.3"
+aiofiles = "^0.7.0"
+aiohttp = "^3.8.1"
+apscheduler = "^3.8.0"
+cos-python-sdk-v5 = "^1.9.10"
+nb-cli = "^0.5.1"
+nonebot2 = "^2.0.0.a16"
+nonebot-plugin-apscheduler = "^0.1.2"
+pyyaml = "^5.4.1"
+quart = "^0.16.1"
+urllib3 = "^1.26.7"
+
+
+[tool.poetry.dev-dependencies]
+aiofiles = "^0.7.0"
+aiohttp = "^3.8.1"
+apscheduler = "^3.8.0"
+cos-python-sdk-v5 = "^1.9.10"
+nb-cli = "^0.5.1"
+nonebot2 = "^2.0.0.a16"
+nonebot-plugin-apscheduler = "^0.1.2"
+nonebot-plugin-test = "^0.3.0"
+pyyaml = "^5.4.1"
+quart = "^0.16.1"
+urllib3 = "^1.26.7"
+
+
+[nonebot.plugins]
+plugins = []
+plugin_dirs = ["src/plugins"]
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

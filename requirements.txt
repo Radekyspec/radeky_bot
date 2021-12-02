@@ -1,0 +1,9 @@
+aiofiles==0.7.0
+aiohttp==3.8.1
+apscheduler==3.8.0
+cos-python-sdk-v5==1.9.10
+nb-cli==0.5.1
+nonebot-plugin-apscheduler==0.1.2
+pyyaml==5.4.1
+quart==0.16.1
+urllib3==1.26.7
