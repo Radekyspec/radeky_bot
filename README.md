@@ -1,7 +1,30 @@
-# radeky_bot
+# Radeky_bot
+
+### Runtime requirement
+- Python version >= 3.9
 
 ## How to start
 
-1. generate project using `nb create` .
-2. writing your plugins under `src/plugins` folder.
-3. run your bot using `nb run` .
+#### Clone this repository
+
+```shell
+git clone https://github.com/Radekyspec/Radeky_bot.git
+```
+
+#### Entering the directory of bot 
+
+```shell
+cd Radeky_bot
+```
+
+#### Install dependencies
+
+```shell
+pip install requirements.txt
+```
+
+#### Run your bot
+
+```shell
+nb run
+```
