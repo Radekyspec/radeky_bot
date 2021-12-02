@@ -1,4 +1,4 @@
-# Radeky_bot
+# radeky_bot
 
 ### Runtime requirement
 - Python version >= 3.9
