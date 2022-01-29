@@ -5,7 +5,8 @@ from ... import config
 from nonebot import on_command
 from nonebot.adapters import Bot
 from nonebot.typing import T_State
-from nonebot.adapters.cqhttp import PrivateMessageEvent
+from nonebot.params import State
+from nonebot.adapters.onebot.v11 import PrivateMessageEvent
 from nonebot.permission import SUPERUSER
 
 __plugin_name__ = 'list'
@@ -18,7 +19,7 @@ check = on_command("list", permission=SUPERUSER, priority=5)
 
 
 @check.handle()
-async def check_list(bot: Bot, event: PrivateMessageEvent, state: T_State):
+async def check_list(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
     list_give = await display_all_uid()
     await check.finish(list_give)
 
@@ -42,5 +43,6 @@ async def display_all_uid() -> str:
     res = '列表中的用户有：\n'
     for i in range(len(uid_list)):
         res += str(uid_list[i]) + '：' + str(name_list[i]) + '\n'
+    res = res[:-1]
 
     return res

@@ -8,7 +8,7 @@ import os
 import yaml
 from ... import config
 from ...utils import refresh
-from nonebot.adapters.cqhttp.exception import NetworkError
+from nonebot.adapters.onebot.v11.exception import NetworkError
 from nonebot.adapters import Bot
 
 scheduler = nonebot.require("nonebot_plugin_apscheduler").scheduler

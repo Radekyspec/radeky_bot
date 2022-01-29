@@ -6,7 +6,9 @@ from ...utils import refresh
 from nonebot import on_command
 from nonebot.adapters import Bot
 from nonebot.typing import T_State
-from nonebot.adapters.cqhttp import PrivateMessageEvent
+from nonebot.params import State, CommandArg
+from nonebot.adapters import Message
+from nonebot.adapters.onebot.v11 import PrivateMessageEvent
 from nonebot.permission import SUPERUSER
 
 __plugin_name__ = 'add'
@@ -20,15 +22,15 @@ add_uid = on_command("add", permission=SUPERUSER, priority=5)
 
 
 @add_uid.handle()
-async def get_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
-    uid = str(event.get_message()).strip()
+async def get_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State(), message: Message = CommandArg()):
+    uid = str(message).strip()
     if uid:
         state["uid"] = uid
 
 
 @add_uid.got("uid", prompt="请输入需要关注用户的UID：")
-async def handle_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
-    uid = state["uid"]
+async def handle_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State(), message: Message = CommandArg()):
+    uid = str(state["uid"])
     try:
         uid = int(uid)
     except ValueError:

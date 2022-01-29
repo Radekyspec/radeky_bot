@@ -4,9 +4,10 @@ import yaml
 from ... import config
 from ...utils import refresh
 from nonebot import on_command
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Message
 from nonebot.typing import T_State
-from nonebot.adapters.cqhttp import PrivateMessageEvent
+from nonebot.params import State, CommandArg
+from nonebot.adapters.onebot.v11 import PrivateMessageEvent
 from nonebot.permission import SUPERUSER
 
 __plugin_name__ = 'rm'
@@ -21,15 +22,16 @@ remove = on_command('rm', permission=SUPERUSER, priority=5)
 
 
 @remove.handle()
-async def del_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
-    uid = str(event.get_message()).strip()
+async def del_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State(), message: Message = CommandArg()):
+    uid = str(message).strip()
     if uid:
         state["uid"] = uid
 
 
 @remove.got("uid", prompt="请输入要取消关注的UID：")
-async def get_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
+async def get_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
     try:
+        state["uid"] = str(state["uid"])
         state["uid"] = int(state["uid"])
     except ValueError:
         await remove.reject('UID只能为数字！请重新输入：')

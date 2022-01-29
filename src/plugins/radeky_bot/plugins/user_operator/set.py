@@ -3,9 +3,10 @@ import os
 import yaml
 from ... import config
 from nonebot import on_command
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Message
 from nonebot.typing import T_State
-from nonebot.adapters.cqhttp import PrivateMessageEvent
+from nonebot.params import State, CommandArg
+from nonebot.adapters.onebot.v11 import PrivateMessageEvent
 from nonebot.permission import SUPERUSER
 
 __plugin_name__ = 'set'
@@ -25,8 +26,8 @@ settings = on_command("set", permission=SUPERUSER, priority=5)
 
 
 @settings.handle()
-async def handle_setting(bot: Bot, event: PrivateMessageEvent, state: T_State):
-    setting = str(event.get_message()).strip()
+async def handle_setting(bot: Bot, event: PrivateMessageEvent, state: T_State = State(), message: Message = CommandArg()):
+    setting = str(message).strip()
     if setting:
         set_list = setting.split()
         try:
@@ -38,8 +39,9 @@ async def handle_setting(bot: Bot, event: PrivateMessageEvent, state: T_State):
 
 
 @settings.got("set_uid", prompt="请输入需要设置的UID：")
-async def check_info(bot: Bot, event: PrivateMessageEvent, state: T_State):
+async def check_info(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
     try:
+        state["set_uid"] = str(state["set_uid"])
         state["set_uid"] = int(state["set_uid"])
     except ValueError:
         await settings.reject("UID只能为数字！请重新输入：")
@@ -48,13 +50,13 @@ async def check_info(bot: Bot, event: PrivateMessageEvent, state: T_State):
 
 
 @settings.got("set_info", prompt="请输入需要设置的项（区分大小写）：")
-async def check_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
-    if state["set_info"] not in ["Dynamic", "Title", "Live", "Atall"]:
+async def check_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
+    if str(state["set_info"]) not in ["Dynamic", "Title", "Live", "Atall"]:
         await settings.reject("设置项有误！请重新输入：")
 
 
 @settings.got("set_status", prompt="请输入需要改变的值：")
-async def check_status(bot: Bot, event: PrivateMessageEvent, state: T_State):
+async def check_status(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
     set_status = str(state["set_status"]).lower().capitalize()
     if set_status == "True":
         set_status = True
@@ -62,7 +64,7 @@ async def check_status(bot: Bot, event: PrivateMessageEvent, state: T_State):
         set_status = False
     else:
         await settings.reject("类型值错误！请重新输入：")
-    result = await change_setting(state["set_uid"], state["set_info"], set_status)
+    result = await change_setting(str(state["set_uid"]), str(state["set_info"]), set_status)
     await settings.finish(result)
 
 

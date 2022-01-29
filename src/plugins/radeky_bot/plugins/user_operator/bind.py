@@ -3,9 +3,10 @@ import os
 import yaml
 from ... import config
 from nonebot import on_command
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Message
+from nonebot.params import State, CommandArg
 from nonebot.typing import T_State
-from nonebot.adapters.cqhttp import PrivateMessageEvent
+from nonebot.adapters.onebot.v11 import PrivateMessageEvent
 from nonebot.permission import SUPERUSER
 
 __plugin_name__ = 'bind'
@@ -19,8 +20,8 @@ bind = on_command("bind", permission=SUPERUSER, priority=5)
 
 
 @bind.handle()
-async def bind_group(bot: Bot, event: PrivateMessageEvent, state: T_State):
-    total = str(event.get_message()).strip()
+async def bind_group(bot: Bot, event: PrivateMessageEvent, state: T_State = State(), message: Message = CommandArg()):
+    total = str(message).strip()
     state["is_group_list"] = False
     if total:
         total_list = total.split()
@@ -33,8 +34,9 @@ async def bind_group(bot: Bot, event: PrivateMessageEvent, state: T_State):
 
 
 @bind.got("bind_uid", prompt="请输入需要绑定的UID：")
-async def check_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
+async def check_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
     try:
+        state["bind_uid"] = str(state["bind_uid"])
         state["bind_uid"] = int(state["bind_uid"])
     except ValueError:
         await bind.reject("UID只能为数字！请重新输入：")
@@ -43,13 +45,13 @@ async def check_uid(bot: Bot, event: PrivateMessageEvent, state: T_State):
 
 
 @bind.got("group_list", prompt="请输入需要绑定的群聊，用空格分隔：")
-async def check_group(bot: Bot, event: PrivateMessageEvent, state: T_State):
+async def check_group(bot: Bot, event: PrivateMessageEvent, state: T_State = State()):
     if state["group_list"] is None:
         await bind.reject("请输入需要绑定的群聊，用空格分隔：")
     if not state["is_group_list"]:
         group_list = str(state["group_list"]).strip().split()
     else:
-        group_list = state["group_list"]
+        group_list = str(state["group_list"])[2:-2].split("', '")
     bind_uid = state["bind_uid"]
     if bind_uid in group_list:
         await bind.reject("请勿输入相同的UID和群号！请重新输入群号，用空格分隔：")

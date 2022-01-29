@@ -1,6 +1,6 @@
 from ...utils import initialize
 from nonebot import get_driver
-from nonebot.adapters.cqhttp import Bot
+from nonebot import logger
 
 __plugin_name__ = 'init'
 __plugin_usage__ = """
@@ -11,9 +11,8 @@ __plugin_usage__ = """
 driver = get_driver()
 
 
-@driver.on_bot_connect
-async def check_initial(bot: Bot):
-    superuser = "".join(bot.config.superusers)
+@driver.on_startup
+async def check_initial():
     results = await initialize.check_initial()
     for result in results:
-        await bot.call_api(api="send_private_msg", **{"user_id": superuser, "message": result})
+        logger.info(result)
