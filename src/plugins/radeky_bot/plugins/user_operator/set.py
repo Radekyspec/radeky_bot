@@ -1,7 +1,6 @@
-import aiofiles
 import os
-import yaml
 from ... import config
+from ...utils import write_file, read_file
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
 from nonebot.typing import T_State
@@ -21,12 +20,12 @@ __plugin_usage__ = r"""
 直播通知: Live
 """
 
-
 settings = on_command("set", permission=SUPERUSER, priority=5)
 
 
 @settings.handle()
-async def handle_setting(bot: Bot, event: PrivateMessageEvent, state: T_State = State(), message: Message = CommandArg()):
+async def handle_setting(bot: Bot, event: PrivateMessageEvent, state: T_State = State(),
+                         message: Message = CommandArg()):
     setting = str(message).strip()
     if setting:
         set_list = setting.split()
@@ -69,19 +68,11 @@ async def check_status(bot: Bot, event: PrivateMessageEvent, state: T_State = St
 
 
 async def change_setting(uid: str, setting: str, status: bool) -> str:
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
-                             'r', encoding='utf-8') as s:
-        setting_dic = yaml.safe_load(await s.read())
-        await s.close()
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                             'r', encoding='utf-8') as u:
-        user_dic = yaml.safe_load(await u.read())
-        await u.close()
+    setting_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
+    user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
 
     setting_dic[uid][setting] = status
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
-                             'w', encoding='utf-8') as t:
-        await t.write(yaml.dump(setting_dic, allow_unicode=True))
-        await t.close()
+    await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
+                                     setting_dic)
 
     return '{user}（{uid}）的{set}设置已更改为{status}'.format(user=user_dic[uid], uid=uid, set=setting, status=status)

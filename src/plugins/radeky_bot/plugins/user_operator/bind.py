@@ -1,7 +1,6 @@
-import aiofiles
 import os
-import yaml
 from ... import config
+from ...utils import write_file, read_file
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
 from nonebot.params import State, CommandArg
@@ -61,23 +60,12 @@ async def check_group(bot: Bot, event: PrivateMessageEvent, state: T_State = Sta
 
 async def bind_uid_to_group(uid: str, group: list) -> str:
     try:
-        async with aiofiles.open(
-                os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'), 'r',
-                encoding='utf-8') as b:
-            setting_dic = yaml.safe_load(await b.read())
-            await b.close()
+        setting_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
         setting_dic[uid]['Group'] = group
-        async with aiofiles.open(
-                os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'), 'w',
-                encoding='utf-8') as cb:
-            await cb.write(yaml.dump(setting_dic, allow_unicode=True))
-            await cb.close()
+        await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
+                                         setting_dic)
     except:
         return '文件读写异常，绑定失败。'
 
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                             'r', encoding='utf-8') as u:
-        user_dic = yaml.safe_load(await u.read())
-        await u.close()
-
+    user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
     return '{user}（{uid}）已绑定至群聊{group}'.format(user=user_dic[uid], uid=uid, group=group)

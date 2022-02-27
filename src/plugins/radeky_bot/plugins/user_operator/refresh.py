@@ -14,7 +14,6 @@ __plugin_usage__ = r"""
 距离上一次刷新7天后机器人会自动刷新
 """
 
-
 rf = on_command("refresh", permission=SUPERUSER, priority=5)
 
 

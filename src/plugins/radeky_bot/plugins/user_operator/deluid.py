@@ -1,8 +1,6 @@
-import aiofiles
 import os
-import yaml
 from ... import config
-from ...utils import refresh
+from ...utils import refresh, read_file, write_file
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
 from nonebot.typing import T_State
@@ -16,7 +14,6 @@ __plugin_usage__ = r"""
 
 将对应主播的uid移出关注列表
 """
-
 
 remove = on_command('rm', permission=SUPERUSER, priority=5)
 
@@ -43,15 +40,8 @@ async def get_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State()
 
 async def remove_user_uid(uid: str) -> str:
     try:
-        async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                                 'r', encoding='utf-8') as du:
-            user_dic = yaml.safe_load(await du.read())
-            await du.close()
-        async with aiofiles.open(
-                os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'), 'r',
-                encoding='utf-8') as ds:
-            setting_dic = yaml.safe_load(await ds.read())
-            await ds.close()
+        user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
+        setting_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
     except FileNotFoundError:
         return '数据访问异常，取消关注失败。'
 
@@ -63,14 +53,9 @@ async def remove_user_uid(uid: str) -> str:
     except KeyError:
         return "输入数据错误，取消关注失败。"
 
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                             'w', encoding='utf-8') as cu:
-        await cu.write(yaml.dump(user_dic, allow_unicode=True))
-        await cu.close()
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
-                             'w', encoding='utf-8') as cs:
-        await cs.write(yaml.dump(setting_dic, allow_unicode=True))
-        await cs.close()
-
+    await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
+                                     user_dic)
+    await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
+                                     setting_dic)
     await refresh.refresh_name()
     return '已经取消关注{user}（{uid}）。'.format(user=del_user, uid=uid)

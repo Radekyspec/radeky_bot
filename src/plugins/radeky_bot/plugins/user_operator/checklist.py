@@ -1,7 +1,6 @@
-import aiofiles
 import os
-import yaml
 from ... import config
+from ...utils import read_file, write_file
 from nonebot import on_command
 from nonebot.adapters import Bot
 from nonebot.typing import T_State
@@ -26,10 +25,7 @@ async def check_list(bot: Bot, event: PrivateMessageEvent, state: T_State = Stat
 
 async def display_all_uid() -> str:
     try:
-        async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                                 'r', encoding='utf-8') as u:
-            user_dic = yaml.safe_load(await u.read())
-            await u.close()
+        user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
     except FileNotFoundError:
         return '查询失败。'
     name_list = []
@@ -44,5 +40,4 @@ async def display_all_uid() -> str:
     for i in range(len(uid_list)):
         res += str(uid_list[i]) + '：' + str(name_list[i]) + '\n'
     res = res[:-1]
-
     return res

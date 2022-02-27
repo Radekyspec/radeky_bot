@@ -1,6 +1,6 @@
-import aiofiles
 import os
-import yaml
+from . import read_file
+from . import write_file
 from .. import config
 
 
@@ -8,14 +8,8 @@ async def check_initial():
     results = ["欢迎使用radeky_botV3，正在初始化配置文件…"]
     try:
         os.listdir(os.path.realpath(config.radeky_dir))
-        async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                                 'r', encoding='utf-8') as u:
-            raw_users = yaml.safe_load(await u.read())
-            await u.close()
-        async with aiofiles.open(
-                os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'), 'r',
-                encoding='utf-8') as s:
-            await s.close()
+        raw_users = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
+        await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
     except FileNotFoundError:
         await __generate_new()
         results.append('未找到配置文件，正在重新生成。')
@@ -46,14 +40,10 @@ async def __generate_new():
         os.makedirs(os.path.realpath(config.radeky_dir))
     except FileExistsError:
         pass
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
-                             'w', encoding='utf-8') as ns:
-        await ns.write('')
-        await ns.close()
-    async with aiofiles.open(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'), 'w',
-                             encoding='utf-8') as nu:
-        await nu.write('')
-        await nu.close()
+    await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
+                           '')
+    await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
+                           '')
 
 
 def __generate_temp_folder():
