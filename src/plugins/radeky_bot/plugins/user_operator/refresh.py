@@ -1,10 +1,11 @@
-from ...utils import refresh
 from nonebot import on_command
 from nonebot.adapters import Bot
-from nonebot.typing import T_State
-from nonebot.params import State
 from nonebot.adapters.onebot.v11 import PrivateMessageEvent
+from nonebot.params import State
 from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
+
+from ...utils import refresh
 
 __plugin_name__ = 'refresh'
 __plugin_usage__ = r"""

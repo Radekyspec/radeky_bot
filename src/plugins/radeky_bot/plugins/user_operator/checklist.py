@@ -1,12 +1,11 @@
-import os
-from ... import config
-from ...utils import read_file, write_file
 from nonebot import on_command
 from nonebot.adapters import Bot
-from nonebot.typing import T_State
-from nonebot.params import State
 from nonebot.adapters.onebot.v11 import PrivateMessageEvent
+from nonebot.params import State
 from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
+
+from ...utils import read_file
 
 __plugin_name__ = 'list'
 __plugin_usage__ = r"""
@@ -25,7 +24,7 @@ async def check_list(bot: Bot, event: PrivateMessageEvent, state: T_State = Stat
 
 async def display_all_uid() -> str:
     try:
-        user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
+        user_dic = await read_file.read_users()
     except FileNotFoundError:
         return '查询失败。'
     name_list = []

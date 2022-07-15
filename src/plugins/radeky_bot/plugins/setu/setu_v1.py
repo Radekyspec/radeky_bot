@@ -1,11 +1,12 @@
-import aiohttp
 import json
-from nonebot.rule import to_me
+
+import aiohttp
+from nonebot import on_command
 from nonebot.adapters import Bot, Message
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
-from nonebot.typing import T_State
 from nonebot.params import State, CommandArg
-from nonebot import on_command
+from nonebot.rule import to_me
+from nonebot.typing import T_State
 
 send_picture = on_command("setu", rule=to_me(), priority=1)
 send_picture_cn = on_command("色图", rule=to_me(), priority=1)

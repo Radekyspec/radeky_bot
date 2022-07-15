@@ -1,12 +1,12 @@
-import os
-from ... import config
-from ...utils import refresh, read_file, write_file
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
-from nonebot.typing import T_State
-from nonebot.params import State, CommandArg
 from nonebot.adapters.onebot.v11 import PrivateMessageEvent
+from nonebot.params import State, CommandArg
 from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
+
+from ...utils import refresh, read_file, write_file
+from ..tools.ws_monitor import Monitor
 
 __plugin_name__ = 'rm'
 __plugin_usage__ = r"""
@@ -40,8 +40,8 @@ async def get_uid(bot: Bot, event: PrivateMessageEvent, state: T_State = State()
 
 async def remove_user_uid(uid: str) -> str:
     try:
-        user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
-        setting_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
+        user_dic = await read_file.read_users()
+        setting_dic = read_file.read_settings()
     except FileNotFoundError:
         return '数据访问异常，取消关注失败。'
 
@@ -49,13 +49,13 @@ async def remove_user_uid(uid: str) -> str:
 
     try:
         del user_dic[uid]
+        Monitor.remove(setting_dic[uid]["room_id"])
         del setting_dic[uid]
     except KeyError:
         return "输入数据错误，取消关注失败。"
 
-    await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
-                                     user_dic)
-    await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
-                                     setting_dic)
+    await write_file.write_users(user_dic)
+    write_file.write_settings(setting_dic)
     await refresh.refresh_name()
+
     return '已经取消关注{user}（{uid}）。'.format(user=del_user, uid=uid)

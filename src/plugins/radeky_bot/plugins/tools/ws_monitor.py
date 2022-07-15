@@ -1,33 +1,42 @@
 import asyncio
-from nonebot import require, logger
 import os
+
+from .dm import BiliDM
 from ... import config
-from .dm import BiliDM, LivePusher
-from .get_user_info import GetUserInfo
-from ...utils import read_file, write_file
-
-scheduler = require("nonebot_plugin_apscheduler").scheduler
+from ...utils import write_file
+from ...utils.get_user_info import GetUserInfo
 
 
-@scheduler.scheduled_job("interval", seconds=30, max_instances=20)
-async def monitor():
-    if str(await read_file.read(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"))) == "0":
-        logger.warning("[Danmaku]  Connection closed. Reconnecting...")
-        await stop_ws()
-        await start_ws()
+class Monitor:
+    instances = {}
+
+    def __init__(self):
+        room_id_list = list(filter(lambda a: True if a != "0" else False, GetUserInfo().room_list()))
+        for room_id in room_id_list:
+            self.instances[room_id] = BiliDM(room_id)
+
+    async def start_ws(self):
         await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"), "1")
+        loop = asyncio.get_event_loop()
+        for room_id in self.instances:
+            asyncio.run_coroutine_threadsafe(self.instances[room_id].startup(),
+                                             loop)
 
+    async def stop_ws(self):
+        await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"), "0")
+        loop = asyncio.get_event_loop()
+        for room_id in self.instances:
+            asyncio.run_coroutine_threadsafe(self.instances[room_id].stop(),
+                                             loop)
 
-async def start_ws():
-    room_id_list = []
-    v_dict = await GetUserInfo().acquire()
-    for uid in v_dict.keys():
-        room_id_list.append(await LivePusher.get_live_room_id(uid))
-    loop = asyncio.get_event_loop()
-    asyncio.run_coroutine_threadsafe(BiliDM.start(room_id_list), loop)
+    @classmethod
+    def add(cls, room_id: str):
+        cls.instances[room_id] = BiliDM(room_id)
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(cls.instances[room_id].startup(), loop)
 
-
-async def stop_ws():
-    await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"), "0")
-    loop = asyncio.get_event_loop()
-    asyncio.run_coroutine_threadsafe(BiliDM.stop(), loop)
+    @classmethod
+    def remove(cls, room_id: str):
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(cls.instances[room_id].stop(), loop)
+        del cls.instances[room_id]

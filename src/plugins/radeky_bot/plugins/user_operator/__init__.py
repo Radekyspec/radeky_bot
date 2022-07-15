@@ -1,1 +1,1 @@
-from . import adduid, bind, checklist, deluid, refresh, set
+from . import adduid, bind, checklist, deluid, refresh, setuser

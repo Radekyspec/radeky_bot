@@ -2,53 +2,83 @@ import asyncio
 import json
 import os
 import traceback
-import zlib
+
+import aiohttp
+import brotli
+import websockets
+from nonebot import logger
+
 from ..pusher.live_pusher import LivePusher
-from .get_user_info import GetUserInfo
 from ... import config
 from ...utils import write_file, read_file
-from aiowebsocket.converses import AioWebSocket
-from nonebot import logger
-from typing import Optional
+from ...utils.get_user_info import GetUserInfo
 
 
 class BiliDM:
+    WS = None
+
     def __init__(self, room_id):
         self.room_id = str(room_id)
-        self.wss_url = "wss://broadcastlv.chat.bilibili.com/sub"
-        self.fail_time = 0
-        self.fail = False
+        self.wss_url = "wss://"
+        self.closed = False
+
+    async def get_key(self):
+        url = "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo"
+        payload = {
+            "id": self.room_id,
+            "type": 0,
+        }
+        headers = {
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
+        }
+        async with aiohttp.request("GET", url, params=payload, headers=headers) as resp:
+            resp = json.loads(await resp.text())
+            self.wss_url = self.wss_url + resp["data"]["host_list"][0]["host"] + "/sub"
+            return resp["data"]["token"]
 
     async def startup(self):
-        data_raw = "000000{headerLen}0010000100000007000000017b22726f6f6d6964223a{roomid}7d"
-        data_raw = data_raw.format(headerLen=hex(27 + len(self.room_id))[2:],
-                                   roomid="".join(map(lambda x: hex(ord(x))[2:], list(self.room_id))))
-        async with AioWebSocket(self.wss_url) as aws:
-            converse = aws.manipulator
-            await converse.send(bytes.fromhex(data_raw))
+        key = await self.get_key()
+        payload = "".join(
+            json.dumps(
+                {
+                    "uid": 0,
+                    "roomid": int(self.room_id),
+                    "protover": 3,
+                    "platform": "web",
+                    "type": 2,
+                    "key": key
+                }
+            ).split(" "))
+        header_op = "001000010000000700000001"
+        header_len = ("0" * (8 - len(hex(len(payload) + 16)[2:])) + hex(len(payload) + 16)[2:]) if len(
+            hex(len(payload) + 16)[2:]) <= 8 else ...
+        header = header_len + header_op + bytes(str(payload), encoding="utf-8").hex()
+        async for aws in websockets.connect(self.wss_url):
+            self.WS = aws
+            await aws.send(bytes.fromhex(header))
             logger.success("[{room_id}]  Connected to danmaku server.".format(room_id=self.room_id))
-            tasks = [self.heart_beat(converse), self.receive_dm(converse)]
-            await asyncio.gather(*tasks)
-        return
+            tasks = [self.heart_beat(aws), self.receive_dm(aws)]
+            try:
+                await asyncio.gather(*tasks)
+            except websockets.ConnectionClosed:
+                if not self.closed:
+                    logger.warning("[{room_id}]  Disconnected to danmaku server.".format(room_id=self.room_id))
+                    continue
+                break
 
     async def heart_beat(self, websockets):
         hb = "00000010001000010000000200000001"
-        while not self.fail:
+        while True:
             await asyncio.sleep(30)
             await websockets.send(bytes.fromhex(hb))
-            self.fail_time += 1
             logger.debug("[{room_id}][HEARTBEAT]  Send HeartBeat.".format(room_id=self.room_id))
-            if self.fail_time > 5 and not self.fail:
-                logger.warning("[{room_id}]  Too many attempts. Danmaku server is no longer available.".format(
-                    room_id=self.room_id))
-                self.fail = True
-                await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"), "0")
 
     async def receive_dm(self, websockets):
-        while not self.fail:
-            receive_text = await websockets.receive()
+        while True:
+            receive_text = await websockets.recv()
             if receive_text:
                 await self.process_dm(receive_text)
+            await asyncio.sleep(0.5)
 
     async def process_dm(self, data, is_decompressed=False):
         # 获取数据包的长度，版本和操作类型
@@ -58,12 +88,13 @@ class BiliDM:
 
         # 有的时候可能会两个数据包连在一起发过来，所以利用前面的数据包长度判断，
         if len(data) > packet_len:
-            await self.process_dm(data[packet_len:])
+            task = asyncio.create_task(self.process_dm(data[packet_len:]))
             data = data[:packet_len]
+            await task
 
-        # 有时会发送过来 zlib 压缩的数据包，这个时候要去解压。
-        if ver == 2 and not is_decompressed:
-            data = zlib.decompress(data[16:])
+        # brotli 压缩后的数据
+        if ver == 3 and not is_decompressed:
+            data = brotli.decompress(data[16:])
             await self.process_dm(data, is_decompressed=True)
             return
 
@@ -71,7 +102,6 @@ class BiliDM:
         if ver == 1 and op == 3:
             logger.debug(
                 "[{room_id}][ATTENTION]  {attention}".format(room_id=self.room_id, attention=int(data[16:].hex(), 16)))
-            self.fail_time = 0
             return
 
         # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
@@ -79,59 +109,38 @@ class BiliDM:
         if op == 5:
             try:
                 jd = json.loads(data[16:].decode("utf-8", errors="ignore"))
-                if jd["cmd"] == "DANMU_MSG":
-                    logger.debug(f"[{self.room_id}][DANMAKU] " + jd["info"][2][1] + ": " + jd["info"][1])
-                elif jd["cmd"] == "LIVE":
-                    v_room_dict = await GetUserInfo().acquire_room()
+                if jd["cmd"] == "LIVE":
                     try:
                         last_live_status = str(await read_file.read(
                             os.path.join(os.path.realpath(config.radeky_dir), "temp", str(self.room_id) + "Live")))
                     except FileNotFoundError:
                         last_live_status = "0"
-                        pass
                     await write_file.write(
                         os.path.join(os.path.realpath(config.radeky_dir), "temp", str(self.room_id) + "Live"), "1")
                     if last_live_status != "1":
-                        t = LivePusher(v_room_dict)
-                        await t.send_live(self.room_id, "LiveNow")
-                    logger.debug(self.room_id + "LiveNow")
+                        t = LivePusher(GetUserInfo())
+                        t.room_dict = await t.u.acquire_room()
+                        await t.send_live(self.room_id, LivePusher.LIVE_NOW)
+                    logger.debug(self.room_id + " LiveNow")
                 elif jd["cmd"] == "PREPARING":
-                    v_room_dict = await GetUserInfo().acquire_room()
                     try:
                         last_live_status = str(await read_file.read(
                             os.path.join(os.path.realpath(config.radeky_dir), "temp", str(self.room_id) + "Live")))
                     except FileNotFoundError:
                         last_live_status = "1"
-                        pass
                     await write_file.write(
                         os.path.join(os.path.realpath(config.radeky_dir), "temp", str(self.room_id) + "Live"), "0")
                     if last_live_status != "0":
-                        t = LivePusher(v_room_dict)
-                        await t.send_live(self.room_id, "LiveEnd")
-                    logger.debug(self.room_id + "LiveEnd")
+                        t = LivePusher(GetUserInfo())
+                        t.room_dict = await t.u.acquire_room()
+                        await t.send_live(self.room_id, LivePusher.LIVE_END)
+                    logger.debug(self.room_id + " LiveEnd")
                 else:
                     logger.debug(f"[{self.room_id}][OTHER] " + jd["cmd"])
             except Exception:
                 logger.error(traceback.format_exc())
 
-    @classmethod
-    async def start(cls, room_list: Optional[list] = None):
-        if room_list is None:
-            room_list = ["371798", "290889"]
-        cls.room_list = room_list
-        tasks = []
-        for room_id in room_list:
-            tasks.append(BiliDM(room_id).startup())
-        await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"), "1")
-        await asyncio.gather(*tasks)
-
-    # TODO 修改ws连接关闭函数
-    @classmethod
-    async def stop(cls):
-        await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), "temp", "ws_status"), "0")
-        for task in asyncio.current_task():
-            logger.info("Cancelling the task {}: {}".format(id(task), task.cancel()))
-
-
-if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(BiliDM.start())
+    async def stop(self):
+        self.closed = True
+        if self.WS is not None:
+            await self.WS.close()

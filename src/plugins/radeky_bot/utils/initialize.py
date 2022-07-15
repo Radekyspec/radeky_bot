@@ -1,4 +1,5 @@
 import os
+
 from . import read_file
 from . import write_file
 from .. import config
@@ -6,14 +7,21 @@ from .. import config
 
 async def check_initial():
     results = ["欢迎使用radeky_botV3，正在初始化配置文件…"]
+    """
     try:
         os.listdir(os.path.realpath(config.radeky_dir))
-        raw_users = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
-        await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
+        raw_users = await read_file.read_users()
+        read_file.read_settings()
     except FileNotFoundError:
+    """
+    files = []
+    for file in ["users.yml", "settings.ini"]:
+        files.append(os.path.exists(os.path.join(os.path.realpath(config.radeky_dir), file)))
+    if not all(files):
         await __generate_new()
         results.append('未找到配置文件，正在重新生成。')
     else:
+        raw_users = await read_file.read_users()
         try:
             users = []
             for dict_key in raw_users.keys():
@@ -40,7 +48,7 @@ async def __generate_new():
         os.makedirs(os.path.realpath(config.radeky_dir))
     except FileExistsError:
         pass
-    await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
+    await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), 'settings.ini'),
                            '')
     await write_file.write(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'),
                            '')

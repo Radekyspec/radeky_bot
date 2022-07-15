@@ -1,12 +1,11 @@
-import os
-from ... import config
-from ...utils import write_file, read_file
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
-from nonebot.params import State, CommandArg
-from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import PrivateMessageEvent
+from nonebot.params import State, CommandArg
 from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
+
+from ...utils import write_file, read_file
 
 __plugin_name__ = 'bind'
 __plugin_usage__ = r"""
@@ -54,18 +53,18 @@ async def check_group(bot: Bot, event: PrivateMessageEvent, state: T_State = Sta
     bind_uid = state["bind_uid"]
     if bind_uid in group_list:
         await bind.reject("请勿输入相同的UID和群号！请重新输入群号，用空格分隔：")
+    group_list = ", ".join(group_list)
     result = await bind_uid_to_group(bind_uid, group_list)
     await bind.finish(result)
 
 
-async def bind_uid_to_group(uid: str, group: list) -> str:
+async def bind_uid_to_group(uid: str, group: str) -> str:
     try:
-        setting_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'))
-        setting_dic[uid]['Group'] = group
-        await write_file.write_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'settings.yml'),
-                                         setting_dic)
+        setting_dic = read_file.read_settings()
+        setting_dic[uid]['group'] = group
+        write_file.write_settings(setting_dic)
     except:
         return '文件读写异常，绑定失败。'
 
-    user_dic = await read_file.read_from_yaml(os.path.join(os.path.realpath(config.radeky_dir), 'users.yml'))
+    user_dic = await read_file.read_users()
     return '{user}（{uid}）已绑定至群聊{group}'.format(user=user_dic[uid], uid=uid, group=group)
